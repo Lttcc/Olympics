@@ -137,7 +137,7 @@ def main(args):
             model.load(load_dir,episode=args.load_episode)
         elif args.algo=="cnn":
             model=Mycnn()
-            model=torch.load("./cnnmodels1.pth")
+            model=torch.load("./cnnmodels2.pth")
     else:
         model = PPO(run_dir)
         Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state', 'done'])
@@ -160,7 +160,7 @@ def main(args):
         '''
         ltc 把data_temp导出，data_temp只存了一个episode的数据。
         '''
-        if SAVADATA:
+        if SAVADATA and episode==1:
             imagepath = os.getcwd() + "\\" + "img"
             file1 = "data"
             file2 = "map" + str(args.map)
@@ -169,6 +169,10 @@ def main(args):
                 os.makedirs(fileNamePath)
             if not os.path.exists(imagepath):
                 os.makedirs(imagepath)
+            ls = os.listdir(imagepath)
+            for i in ls:
+                c_path = os.path.join(imagepath, i)
+                os.remove(c_path)
         if SAVADATA and episode!=1:
             with open(fileNamePath+'\\' + 'data.pkl', 'wb') as f:
                 pickle.dump(data_temp, f, pickle.HIGHEST_PROTOCOL)

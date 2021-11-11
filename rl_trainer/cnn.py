@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import pickle
 
-def load_obj(name ):
-    with open('data/map4/' + name + '.pkl', 'rb') as f:
+def load_obj(name):
+    with open('data/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
 torch.manual_seed(1)
 import torch.utils.data as Data
@@ -64,8 +64,14 @@ def main():
     optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate)
     loss_function = nn.CrossEntropyLoss()
     #载入数据
-    expert_data = load_obj("all_data")
+    expert_data4 = load_obj("map4/all_data")
+    expert_data3 = load_obj("map3/data")
+    expert_data={'obs': [], 'action': []}
+    expert_data['obs'].extend(expert_data4['obs']);expert_data['obs'].extend(expert_data3['obs'])
+    expert_data['action'].extend(expert_data4['action']);expert_data['action'].extend(expert_data3['action']);
     data=np.array(expert_data['obs'])
+    label = expert_data['action']
+
     #data=np.divide(data,255)#归一化
     # for i in range(130):
 	#     for j in range(210):
@@ -78,7 +84,6 @@ def main():
     data=np.expand_dims(data.astype(float),axis=-1)
     data=np.transpose(data,(0,3,1,2))
     data_x=torch.tensor(data)
-    label=expert_data['action']
     label_y=torch.tensor(label)
     test_x=data_x
     test_y=label_y
@@ -110,7 +115,7 @@ def main():
         if accuracy>0.97:
             break
 
-    path = os.getcwd()+"\\models\\"+"cnnmodels1.pth"
+    path = os.getcwd()+"\\models\\"+"cnnmodels2.pth"
     torch.save(cnn, path)
     test_output = cnn(test_x[:10])
     pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
