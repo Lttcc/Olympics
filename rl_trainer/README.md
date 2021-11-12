@@ -41,6 +41,6 @@ For your reference, we have trained a vanilla PPO agent independently on four gi
 >
 >python main.py --load_model --algo=ppo --map=4 --load_run=4 --load_episode=1500
 >
->python main.py --load_model --algo=ppo --map=3 --load_run=6 --load_episode=800
+>python main.py --load_model --algo=ppo --map=4 --load_run=6 --load_episode=800
 
 

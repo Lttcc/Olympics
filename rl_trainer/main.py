@@ -1,7 +1,7 @@
 import argparse
 import datetime
 import os.path
-
+import imageio
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import numpy as np
@@ -83,6 +83,7 @@ parser.add_argument("--load_episode", default=900, type=int)
 device = 'cpu'
 RENDER = True
 SAVADATA=False
+SAVAIMG=True
 actions_map = {0: [-100, -30], 1: [-100, -18], 2: [-100, -6], 3: [-100, 6], 4: [-100, 18], 5: [-100, 30], 6: [-40, -30],
                7: [-40, -18], 8: [-40, -6], 9: [-40, 6], 10: [-40, 18], 11: [-40, 30], 12: [20, -30], 13: [20, -18],
                14: [20, -6], 15: [20, 6], 16: [20, 18], 17: [20, 30], 18: [80, -30], 19: [80, -18], 20: [80, -6],
@@ -129,7 +130,10 @@ def main(args):
 
     record_win = deque(maxlen=100)
     record_win_op = deque(maxlen=100)
-
+    '''
+    ltc 处理cnn模型加载
+    '''
+    cnnmodelname = "cnnmodels1.pth"
     if args.load_model:
         if args.algo=="ppo":
             model = PPO()
@@ -137,7 +141,9 @@ def main(args):
             model.load(load_dir,episode=args.load_episode)
         elif args.algo=="cnn":
             model=Mycnn()
-            model=torch.load("./cnnmodels2.pth")
+            cnnmodelpath='./models/'+cnnmodelname
+            model.load_state_dict(torch.load(cnnmodelpath))
+            model.eval()
     else:
         model = PPO(run_dir)
         Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state', 'done'])
@@ -159,26 +165,64 @@ def main(args):
         Gt = 0
         '''
         ltc 把data_temp导出，data_temp只存了一个episode的数据。
+        创建存图片和data的文件夹，清空图片文件夹下的图片
         '''
+        if SAVAIMG and episode==1:
+            if args.algo == 'cnn':
+                 imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + cnnmodelname  # eg:\\img\\map4\\cnnmodel2.pth# eg:\\img\\map4\\run4_1500
+            elif args.algo == 'ppo':
+                imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + "run" + str(args.load_run) + "_" + str(
+                    args.load_episode)
+
+            if not os.path.exists(imagepath):
+                os.makedirs(imagepath)
+            '''
+            清空存储图片下的图片，为了下一轮图片存储。
+            '''
+            ls = os.listdir(imagepath)
+            for i in ls:
+                c_path = os.path.join(imagepath, i)
+                os.remove(c_path)
         if SAVADATA and episode==1:
-            imagepath = os.getcwd() + "\\" + "img"
             file1 = "data"
             file2 = "map" + str(args.map)
             fileNamePath = os.getcwd() + "\\" + file1 + "\\" + file2
             if not os.path.exists(fileNamePath):
                 os.makedirs(fileNamePath)
-            if not os.path.exists(imagepath):
-                os.makedirs(imagepath)
-            ls = os.listdir(imagepath)
-            for i in ls:
-                c_path = os.path.join(imagepath, i)
-                os.remove(c_path)
-        if SAVADATA and episode!=1:
-            with open(fileNamePath+'\\' + 'data.pkl', 'wb') as f:
-                pickle.dump(data_temp, f, pickle.HIGHEST_PROTOCOL)
-            f.close()
+            '''
+            ltc 开了SAVADATA时，且只有是PPO算法，才会导出数据；
+            '''
+        if SAVADATA and episode!=1 :
+            if args.algo=='ppo':
+                with open(fileNamePath+'\\' + 'data.pkl', 'wb') as f:
+                    pickle.dump(data_temp, f, pickle.HIGHEST_PROTOCOL)
+        '''
+        ltc 开了SAVAIMG就把img转gif
+        '''
+        if SAVAIMG and episode!=1:
+            imagepath=""
+            gifname=""
+            if args.algo == 'cnn':
+                imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + cnnmodelname  # eg:\\img\\map4\\cnnmodel2.pth# eg:\\img\\map4\\run4_1500
+                gifname = cnnmodelname[:-4] + '_map' + str(args.map) + '.gif'
+            elif args.algo == 'ppo':
+                imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + "run" + str(args.load_run) + "_" + str(args.load_episode)
+                gifname = "run" + str(args.load_run) + "_" + str(args.load_episode) + '_map' + str(args.map) + '.gif'
+            GIF = []
+            filenames = os.listdir(imagepath)
+            filenames.sort(key=lambda x: int(x[:-4]))  # 文件是乱序的，要给xx.png排个序，:-4就是为了取xx出来
+            for filename in filenames:
+                GIF.append(imageio.imread(imagepath + "\\" + filename))
+            '''
+            创造gif的文件夹 result/算法名/
+            导出git: model名_mapx.gif
+            '''
+            gif_resultpath = os.getcwd() + "\\result_gif\\" + args.algo
+            if not os.path.exists(gif_resultpath):
+                os.makedirs(gif_resultpath)
+            imageio.mimsave(gif_resultpath + "\\"+gifname, GIF,
+                            duration=0.05)  # 这个duration是播放速度，数值越小，速度越快
             sys.exit()
-
         while True:
             action_opponent = opponent_agent.act(obs_oppo_agent)        #opponent action
             action_opponent = [[0],[0]]  #here we assume the opponent is not moving in the demo
@@ -226,9 +270,17 @@ def main(args):
 
             obs_oppo_agent = next_obs_oppo_agent
             obs_ctrl_agent = np.array(next_obs_ctrl_agent).flatten()
-            if RENDER and not SAVADATA:
+            '''
+            ltc 如果开了SAVADATA，则保存图片到文件夹。
+            '''
+            if RENDER and not SAVAIMG:
                 env.env_core.render()
-            elif SAVADATA:
+            elif SAVAIMG:
+                imagepath=""
+                if args.algo == 'cnn':
+                    imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + cnnmodelname  # eg:\\img\\map4\\cnnmodel2.pth# eg:\\img\\map4\\run4_1500
+                elif args.algo == 'ppo':
+                    imagepath = os.getcwd() + "\\img\\map" + str(args.map) + "\\" + "run" + str(args.load_run) + "_" + str(args.load_episode)
                 env.env_core.renderforsave(imagepath)
             Gt += reward[ctrl_agent_index] if done else -1
 

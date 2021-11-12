@@ -13,7 +13,7 @@ torch.manual_seed(1)
 import torch.utils.data as Data
 torch.manual_seed(1)
 # 设置超参数
-epoches = 100
+epoches = 500
 batch_size = 25
 learning_rate = 0.001
 class Mycnn(nn.Module):
@@ -64,11 +64,20 @@ def main():
     optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate)
     loss_function = nn.CrossEntropyLoss()
     #载入数据
-    expert_data4 = load_obj("map4/all_data")
+    expert_data4 = load_obj("map4/data")
     expert_data3 = load_obj("map3/data")
+    expert_data2 = load_obj("map2/data")
+    expert_data1 = load_obj("map1/data")
     expert_data={'obs': [], 'action': []}
-    expert_data['obs'].extend(expert_data4['obs']);expert_data['obs'].extend(expert_data3['obs'])
-    expert_data['action'].extend(expert_data4['action']);expert_data['action'].extend(expert_data3['action']);
+    expert_data['obs'].extend(expert_data4['obs'])
+    expert_data['obs'].extend(expert_data3['obs'])
+    expert_data['obs'].extend(expert_data2['obs'])
+    expert_data['obs'].extend(expert_data1['obs'])
+    expert_data['action'].extend(expert_data4['action'])
+    expert_data['action'].extend(expert_data3['action'])
+    expert_data['action'].extend(expert_data2['action'])
+    expert_data['action'].extend(expert_data1['action']);
+
     data=np.array(expert_data['obs'])
     label = expert_data['action']
 
@@ -112,17 +121,17 @@ def main():
                 # accuracy = sum(pred_y==test_y)/test_y.size(0)
                 accuracy = ((pred_y == test_y.data.numpy()).astype(int).sum()) / float(test_y.size(0))
             print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.numpy(), '| test accuracy: %.2f' % accuracy)
-        if accuracy>0.97:
+        if accuracy-loss>0.8:
             break
 
-    path = os.getcwd()+"\\models\\"+"cnnmodels2.pth"
-    torch.save(cnn, path)
-    test_output = cnn(test_x[:10])
-    pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
-    # t=torch.max(test_output,1)
-    # print(t[0])
-    print(pred_y)
-    print(test_y[:10])
+    path = os.getcwd()+"\\models\\"+"cnnmodels1.pth"
+    torch.save(cnn.state_dict(), path)
+    # test_output = cnn(test_x[:10])
+    # pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
+    # # t=torch.max(test_output,1)
+    # # print(t[0])
+    # print(pred_y)
+    # print(test_y[:10])
 
 
 if __name__ == "__main__":

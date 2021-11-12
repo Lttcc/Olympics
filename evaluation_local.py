@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import random
 from agents.rl.submission import agent as rl_agent
+from agents.cnn.submission import model as cnnmodel
 from env.chooseenv import make
 from tabulate import tabulate
 import argparse
@@ -31,6 +32,14 @@ def get_join_actions(state, algo_list):
         elif algo_list[agent_idx] == 'rl':
             obs = state[agent_idx]['obs'].flatten()
             actions_raw = rl_agent.choose_action(obs)
+            actions = actions_map[actions_raw]
+            joint_actions.append([[actions[0]], [actions[1]]])
+        elif algo_list[agent_idx] == 'cnn':
+            obs=state[agent_idx]['obs']
+            obs = obs[np.newaxis, np.newaxis, :, :]  # (1,1,25,25)
+            obs = torch.tensor(obs)
+            action_prob = cnnmodel(obs)
+            actions_raw = torch.max(action_prob, 1)[1].data.numpy().squeeze().item()
             actions = actions_map[actions_raw]
             joint_actions.append([[actions[0]], [actions[1]]])
 
